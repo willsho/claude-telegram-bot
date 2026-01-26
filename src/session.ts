@@ -23,6 +23,7 @@ import {
   THINKING_KEYWORDS,
   WORKING_DIR,
 } from "./config";
+import { HOOKS_CONFIG } from "./hooks";
 import { formatToolStatus } from "./formatting";
 import { checkPendingAskUserRequests } from "./handlers/streaming";
 import { checkCommandSafety, isPathAllowed } from "./security";
@@ -217,6 +218,8 @@ class ClaudeSession {
       maxThinkingTokens: thinkingTokens,
       additionalDirectories: ALLOWED_PATHS,
       resume: this.sessionId || undefined,
+      // SessionStart hook injects file tree before Claude starts working
+      hooks: HOOKS_CONFIG,
     };
 
     // Add Claude Code executable path if set (required for standalone builds)
