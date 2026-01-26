@@ -10,7 +10,7 @@ import type {
   HookCallbackMatcher,
   SessionStartHookInput,
 } from "@anthropic-ai/claude-agent-sdk";
-import { WORKING_DIR } from "./config";
+import { ALLOWED_PATHS } from "./config";
 
 // Hooks configuration type matching SDK's Options['hooks']
 export type HooksConfig = Partial<
@@ -98,8 +98,8 @@ async function buildFileTreeString(cwd: string): Promise<string> {
 }
 
 /**
- * SessionStart hook that injects the working directory file tree.
- * This gives Claude a map of the codebase before it starts exploring.
+ * SessionStart hook that injects file trees for all allowed paths.
+ * This gives Claude a map of accessible directories before it starts exploring.
  */
 const injectFileTree: HookCallback = async (input, _toolUseId, _context) => {
   // Only run for SessionStart events
@@ -116,14 +116,24 @@ const injectFileTree: HookCallback = async (input, _toolUseId, _context) => {
     return {};
   }
 
-  console.log(`[Hook] SessionStart: building file tree for ${WORKING_DIR}`);
+  console.log(
+    `[Hook] SessionStart: building file trees for ${ALLOWED_PATHS.length} allowed paths`
+  );
 
-  const fileTree = await buildFileTreeString(WORKING_DIR);
+  // Build file trees for all allowed paths in parallel
+  const treeResults = await Promise.all(
+    ALLOWED_PATHS.map(async (path) => {
+      const tree = await buildFileTreeString(path);
+      return `📁 ${path}\n${tree}`;
+    })
+  );
+
+  const combinedTrees = treeResults.join("\n\n");
 
   return {
     hookSpecificOutput: {
       hookEventName: "SessionStart",
-      additionalContext: `Working directory structure:\n\`\`\`\n${fileTree}\n\`\`\``,
+      additionalContext: `Allowed directories structure:\n\`\`\`\n${combinedTrees}\n\`\`\``,
     },
   };
 };
@@ -135,7 +145,7 @@ export const HOOKS_CONFIG: HooksConfig = {
   SessionStart: [
     {
       hooks: [injectFileTree],
-      timeout: 10, // 10 seconds should be plenty for tree command
+      timeout: 30, // Allow more time for multiple directory trees
     },
   ],
 };
