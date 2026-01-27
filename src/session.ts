@@ -208,7 +208,7 @@ class ClaudeSession {
 
     // Build SDK V1 options - supports all features
     const options: Options = {
-      model: "claude-sonnet-4-5",
+      model: "sonnet",
       cwd: WORKING_DIR,
       settingSources: ["user", "project"],
       permissionMode: "bypassPermissions",
