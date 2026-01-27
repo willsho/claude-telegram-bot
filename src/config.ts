@@ -44,6 +44,7 @@ export const ALLOWED_USERS: number[] = (
 
 export const WORKING_DIR = process.env.CLAUDE_WORKING_DIR || HOME;
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+export const ZHIPU_API_KEY = process.env.ZHIPU_API_KEY || "";
 
 // ============== Claude CLI Path ==============
 

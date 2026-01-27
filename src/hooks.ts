@@ -12,6 +12,8 @@ import type {
 } from "@anthropic-ai/claude-agent-sdk";
 import { ALLOWED_PATHS } from "./config";
 
+console.log("[Hook] Module loaded, ALLOWED_PATHS:", ALLOWED_PATHS);
+
 // Hooks configuration type matching SDK's Options['hooks']
 export type HooksConfig = Partial<
   Record<
@@ -102,6 +104,7 @@ async function buildFileTreeString(cwd: string): Promise<string> {
  * This gives Claude a map of accessible directories before it starts exploring.
  */
 const injectFileTree: HookCallback = async (input, _toolUseId, _context) => {
+  console.log("[Hook] injectFileTree called, hook_event_name:", input.hook_event_name);
   // Only run for SessionStart events
   if (input.hook_event_name !== "SessionStart") {
     return {};
@@ -120,11 +123,21 @@ const injectFileTree: HookCallback = async (input, _toolUseId, _context) => {
     `[Hook] SessionStart: building file trees for ${ALLOWED_PATHS.length} allowed paths`
   );
 
-  // Build file trees for all allowed paths in parallel
+  // Build file trees for all allowed paths in parallel with timeout
   const treeResults = await Promise.all(
     ALLOWED_PATHS.map(async (path) => {
-      const tree = await buildFileTreeString(path);
-      return `📁 ${path}\n${tree}`;
+      try {
+        // Create a promise that rejects after 10 seconds
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error("Timeout building file tree")), 10000);
+        });
+
+        const treePromise = buildFileTreeString(path);
+        const tree = await Promise.race([treePromise, timeoutPromise]);
+        return `--- ${path} ---\n${tree}`;
+      } catch (error) {
+        return `--- ${path} ---\n[Error/Timeout: ${error}]`;
+      }
     })
   );
 
@@ -133,7 +146,7 @@ const injectFileTree: HookCallback = async (input, _toolUseId, _context) => {
   return {
     hookSpecificOutput: {
       hookEventName: "SessionStart",
-      additionalContext: `Allowed directories structure:\n\`\`\`\n${combinedTrees}\n\`\`\``,
+      additionalContext: combinedTrees,
     },
   };
 };
